@@ -2,35 +2,26 @@
 <html lang="uk">
 <head>
   <meta charset="UTF-8" />
-  <title>Магазин — макет</title>
+  <title>Магазин — макет з реальною адмінкою</title>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background:#f5f5f5; }
+    body { font-family: Arial, sans-serif; margin:0; padding:20px; background:#f5f5f5; }
     header { display:flex; gap:10px; align-items:center; margin-bottom:20px; }
     input, select, button { padding:6px; }
     .container { display:grid; grid-template-columns: 3fr 1fr; gap:20px; }
     .products { display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap:15px; }
-    .product { background:#fff; padding:10px; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,.1); }
-    .cart { background:#fff; padding:10px; border-radius:6px; }
-    .admin { margin-top:30px; background:#fff; padding:15px; border-radius:6px; }
-    h2 { margin-top:0; }
+    .product, .cart, .admin { background:#fff; padding:10px; border-radius:6px; box-shadow:0 2px 5px rgba(0,0,0,.1); }
     .hidden { display:none; }
   </style>
 </head>
 <body>
 
-<!-- Адмін логін -->
-<div class="admin" id="loginBox">
-  <h2>Вхід в адмінку</h2>
-  <input id="adminCode" placeholder="Введіть код доступу" />
-  <button onclick="loginAdmin()">Увійти</button>
-  <p id="loginStatus"></p>
-</div>
-
 <header>
   <h1>Магазин</h1>
-  <input id="search" placeholder="Пошук товарів" />
+  <input id="search" placeholder="Пошук" />
   <select id="filter">
-    <option value="">Усі категорії</option>
+    <option value="">Усі</option>
     <option value="tech">Техніка</option>
     <option value="other">Інше</option>
   </select>
@@ -39,102 +30,95 @@
 <div class="container">
   <div class="products" id="products"></div>
   <div class="cart">
-    <h2>Корзина</h2>
+    <h3>Корзина</h3>
     <ul id="cart"></ul>
     <strong id="total"></strong>
   </div>
 </div>
 
+<div class="admin" id="loginBox">
+  <h3>Вхід в адмінку</h3>
+  <input id="adminCode" placeholder="Код доступу" />
+  <button onclick="loginAdmin()">Увійти</button>
+  <p id="loginStatus"></p>
+</div>
+
 <div class="admin hidden" id="adminPanel">
-  <h2>Адмінка (додати товар)</h2>
+  <h3>Адмінка</h3>
   <input id="name" placeholder="Назва" />
-  <input id="price" placeholder="Ціна" type="number" />
+  <input id="price" type="number" placeholder="Ціна" />
   <select id="category">
     <option value="tech">Техніка</option>
     <option value="other">Інше</option>
   </select>
-  <button onclick="addProduct()">Додати</button>
-</div>
-
-<div class="admin">
-  <h2>Форма зворотного звʼязку</h2>
-  <input id="email" placeholder="Email" />
-  <button onclick="sendForm()">Відправити</button>
-  <p id="formStatus"></p>
+  <button onclick="addProduct()">Додати товар</button>
 </div>
 
 <script>
-const ADMIN_CODE = '1234'; // код доступу в адмінку
-let products = JSON.parse(localStorage.getItem('products')) || [
-  {id:1, name:'Телефон', price:5000, category:'tech'},
-  {id:2, name:'Навушники', price:800, category:'tech'},
-  {id:3, name:'Блокнот', price:120, category:'other'}
-];
+// 🔥 Firebase (без сервера, всі бачать оновлення)
+var firebaseConfig = {
+  apiKey: "demo",
+  authDomain: "demo.firebaseapp.com",
+  databaseURL: "https://demo.firebaseio.com",
+  projectId: "demo",
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database().ref('products');
 
+const ADMIN_CODE = '1234';
 let cart = [];
+let products = [];
 
-function renderProducts() {
-  const list = document.getElementById('products');
-  list.innerHTML = '';
-  const search = document.getElementById('search').value.toLowerCase();
-  const filter = document.getElementById('filter').value;
-
-  products.filter(p =>
-    p.name.toLowerCase().includes(search) && (!filter || p.category === filter)
-  ).forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'product';
-    div.innerHTML = `<h3>${p.name}</h3><p>${p.price} грн</p><button>В корзину</button>`;
-    div.querySelector('button').onclick = () => addToCart(p);
-    list.appendChild(div);
-  });
+function loginAdmin() {
+  if (adminCode.value === ADMIN_CODE) {
+    adminPanel.classList.remove('hidden');
+    loginBox.classList.add('hidden');
+  } else loginStatus.textContent = 'Невірний код';
 }
 
-function addToCart(product) {
-  cart.push(product);
-  renderCart();
+function renderProducts() {
+  productsEl.innerHTML = '';
+  const s = search.value.toLowerCase();
+  const f = filter.value;
+  products.filter(p => p.name.toLowerCase().includes(s) && (!f || p.category===f))
+    .forEach(p => {
+      const d = document.createElement('div');
+      d.className = 'product';
+      d.innerHTML = `<h4>${p.name}</h4><p>${p.price} грн</p><button>В корзину</button>`;
+      d.querySelector('button').onclick = () => { cart.push(p); renderCart(); };
+      productsEl.appendChild(d);
+    });
 }
 
 function renderCart() {
-  const ul = document.getElementById('cart');
-  ul.innerHTML = '';
-  let total = 0;
-  cart.forEach(p => {
-    total += p.price;
-    const li = document.createElement('li');
-    li.textContent = `${p.name} — ${p.price} грн`;
-    ul.appendChild(li);
-  });
-  document.getElementById('total').textContent = 'Разом: ' + total + ' грн';
+  cartEl.innerHTML = '';
+  let sum = 0;
+  cart.forEach(p => { sum+=p.price; cartEl.innerHTML += `<li>${p.name}</li>`; });
+  total.textContent = 'Разом: ' + sum + ' грн';
 }
 
 function addProduct() {
-  const name = document.getElementById('name').value;
-  const price = +document.getElementById('price').value;
-  const category = document.getElementById('category').value;
-  if (!name || !price) return alert('Заповніть поля');
-  products.push({id:Date.now(), name, price, category});
-  localStorage.setItem('products', JSON.stringify(products));
+  const product = {
+    name: name.value,
+    price: +price.value,
+    category: category.value
+  };
+  db.push(product);
+}
+
+// 🔄 Реальний realtime-апдейт для ВСІХ
+const productsEl = document.getElementById('products');
+const cartEl = document.getElementById('cart');
+const total = document.getElementById('total');
+const search = document.getElementById('search');
+const filter = document.getElementById('filter');
+
+db.on('value', snap => {
+  products = snap.val() ? Object.values(snap.val()) : [];
   renderProducts();
-}
+});
 
-function loginAdmin() {
-  const code = document.getElementById('adminCode').value;
-  if (code === ADMIN_CODE) {
-    document.getElementById('adminPanel').classList.remove('hidden');
-    document.getElementById('loginBox').classList.add('hidden');
-  } else {
-    document.getElementById('loginStatus').textContent = 'Невірний код';
-  }
-}
-
-function sendForm()() {
-  document.getElementById('formStatus').textContent = 'Форма відправлена (імітація)';
-}
-
-['search','filter'].forEach(id => document.getElementById(id).oninput = renderProducts);
-
-renderProducts();
+search.oninput = filter.onchange = renderProducts;
 </script>
 
 </body>
