@@ -18,6 +18,14 @@
 </head>
 <body>
 
+<!-- Адмін логін -->
+<div class="admin" id="loginBox">
+  <h2>Вхід в адмінку</h2>
+  <input id="adminCode" placeholder="Введіть код доступу" />
+  <button onclick="loginAdmin()">Увійти</button>
+  <p id="loginStatus"></p>
+</div>
+
 <header>
   <h1>Магазин</h1>
   <input id="search" placeholder="Пошук товарів" />
@@ -37,7 +45,7 @@
   </div>
 </div>
 
-<div class="admin">
+<div class="admin hidden" id="adminPanel">
   <h2>Адмінка (додати товар)</h2>
   <input id="name" placeholder="Назва" />
   <input id="price" placeholder="Ціна" type="number" />
@@ -56,6 +64,7 @@
 </div>
 
 <script>
+const ADMIN_CODE = '1234'; // код доступу в адмінку
 let products = JSON.parse(localStorage.getItem('products')) || [
   {id:1, name:'Телефон', price:5000, category:'tech'},
   {id:2, name:'Навушники', price:800, category:'tech'},
@@ -109,7 +118,17 @@ function addProduct() {
   renderProducts();
 }
 
-function sendForm() {
+function loginAdmin() {
+  const code = document.getElementById('adminCode').value;
+  if (code === ADMIN_CODE) {
+    document.getElementById('adminPanel').classList.remove('hidden');
+    document.getElementById('loginBox').classList.add('hidden');
+  } else {
+    document.getElementById('loginStatus').textContent = 'Невірний код';
+  }
+}
+
+function sendForm()() {
   document.getElementById('formStatus').textContent = 'Форма відправлена (імітація)';
 }
 
